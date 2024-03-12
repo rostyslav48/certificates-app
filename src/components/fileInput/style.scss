@@ -1,0 +1,27 @@
+@import 'styles/vars';
+@import 'styles/mixins';
+
+.file-input {
+  @include displayFlexColumnCenter;
+  border: dashed 1px $primary-color;
+  padding: 20px;
+  width: 100%;
+  min-height: 300px;
+
+  &__content {
+    @include displayFlexColumnCenter;
+    gap: 20px;
+  }
+
+  &__text {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 400;
+    color: $primary-color;
+  }
+
+  &__button {
+    width: 100%;
+    padding: 5px 30px;
+  }
+}

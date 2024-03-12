@@ -1,0 +1,67 @@
+@import './vars';
+
+@mixin onMiniTalet {
+  @media (min-width: 310px) {
+    @content;
+  }
+}
+
+@mixin onPhone-M {
+  @media (min-width: $phone-m-width) {
+    @content;
+  }
+}
+
+@mixin onTablet {
+  @media (min-width: $tablet-width) {
+    @content;
+  }
+}
+
+@mixin onTablet-L {
+  @media (min-width: $tablet-l-width) {
+    @content;
+  }
+}
+
+@mixin onDesktop {
+  @media (min-width: $desktop-width) {
+    @content;
+  }
+}
+
+@mixin defaultHover {
+  @include onDesktop {
+    transition: transform $transition-duration;
+    &:hover {
+      transform: scale(1.05);
+    }
+  }
+}
+
+@mixin smallHover {
+  @include onDesktop {
+    transition: filter $transition-duration;
+    &:hover {
+      filter: brightness(120%);
+    }
+  }
+}
+
+@mixin displayFlexColumnCenter {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+@mixin text-ellipsis($maxHeight, $lines) {
+  max-height: $maxHeight;
+  line-clamp: $lines;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
+}

@@ -1,0 +1,13 @@
+.wrapper {
+  margin-block: 40px;
+  margin-inline: 20px;
+
+  @include onTablet {
+    margin-inline: 30px;
+  }
+
+  @include onDesktop {
+    max-width: 1200px;
+    margin-inline: auto;
+  }
+}
