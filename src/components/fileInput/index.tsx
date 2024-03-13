@@ -2,10 +2,9 @@ import { FC } from 'react';
 import Dropzone from 'react-dropzone';
 
 import './style.scss';
-import { Certificate } from 'core/types';
 
 type Props = {
-  handleUpload: (certificate: Certificate) => void;
+  handleUpload: (certificate: File) => void;
 };
 
 export const FileInput: FC<Props> = ({ handleUpload }) => {

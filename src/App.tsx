@@ -1,48 +1,65 @@
-import { Certificate } from 'core/types';
+import { CertificateData } from 'core/types';
 import { useState } from 'react';
 import cn from 'classnames';
 import { useLocalStorage } from 'core/hooks';
-import { StorageKeys } from 'core/enums/storage-keys.enum';
+import { StorageKeys, CertificateKeys } from 'core/enums';
 import { FileInput } from './components/fileInput';
-import asn1 from 'asn1';
+import * as asn1js from 'asn1js';
+import * as pkijs from 'pkijs';
 
 // Images
 import Arrow from 'icons/arrow-icon.svg?react';
 
 import './style.scss';
 
-// const certificates: Certificate[] = [
-//   {
-//     id: 1,
-//     name: 'Сертифікат 1',
-//     issuerCN: 'Issuer 1',
-//     validFrom: '01.01.2021',
-//     validTo: '01.01.2022',
-//   },
-//   {
-//     id: 2,
-//     name: 'Сертифікат 2',
-//     issuerCN: 'Issuer 1',
-//     validFrom: '01.01.2021',
-//     validTo: '01.01.2022',
-//   },
-// ];
-
 export const App = () => {
-  const [certificates, setCertificates] = useLocalStorage<Certificate[]>(
+  const [certificates, setCertificates] = useLocalStorage<CertificateData[]>(
     StorageKeys.Certificates,
     [],
   );
   const [selectedCertificate, setSelectedCertificate] =
-    useState<Certificate | null>(null);
+    useState<CertificateData | null>(null);
   const [isAddCertificate, setIsAddCertificate] = useState(false);
 
   const handleCertificateUpload = async (file: File) => {
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = await Buffer.from(arrayBuffer);
-    console.log('buffer', buffer);
-    // const Ber = new asn1.BerReader(buffer);
-    // const buffer = Buffer.from(file.arrayBuffer());
+    const fileArrayBuffer = await file.arrayBuffer();
+    const certificateBuffer = new Uint8Array(fileArrayBuffer).buffer;
+    const asn1 = asn1js.fromBER(certificateBuffer);
+
+    if (asn1.result.error) {
+      throw 'Неправильна структура конверта сертифіката (очікується SEQUENCE)';
+    }
+
+    const cert = new pkijs.Certificate({ schema: asn1.result });
+
+    const certData: CertificateData = {
+      serialNumber: cert.serialNumber.valueBlock.valueHexView.toString(),
+      issuer:
+        cert.issuer.typesAndValues
+          .find((issuer) => issuer.type === CertificateKeys.CommonName)
+          ?.value.valueBlock.value.toString() ?? '',
+      validFrom: cert.notBefore.value.toISOString().split('T')[0],
+      validTo: cert.notAfter.value.toISOString().split('T')[0],
+      commonName:
+        cert.subject.typesAndValues
+          .find((subject) => subject.type === CertificateKeys.CommonName)
+          ?.value.valueBlock.value.toString() ?? '',
+      certificate: cert,
+    };
+
+    setCertificates((prevState) => {
+      const payload = prevState.some(
+        ({ serialNumber }) => serialNumber === certData.serialNumber,
+      )
+        ? prevState.filter(
+            ({ serialNumber }) => serialNumber !== certData.serialNumber,
+          )
+        : prevState;
+
+      return [...payload, certData];
+    });
+    setSelectedCertificate(certData);
+    setIsAddCertificate(false);
   };
 
   return (
@@ -54,19 +71,21 @@ export const App = () => {
         >
           {isAddCertificate ? 'Назад' : 'Додати'}
         </button>
-        {!!certificates.length ? (
+        {certificates.length ? (
           <ul className="certificates__list">
             {certificates.map((certificate) => (
               <li
                 onClick={() => setSelectedCertificate(certificate)}
-                key={certificate.id}
+                key={certificate.serialNumber}
                 className={cn('certificates__item', {
                   'certificates__item--active':
-                    certificate.id === selectedCertificate?.id,
+                    certificate.serialNumber ===
+                    selectedCertificate?.serialNumber,
                 })}
               >
-                <span>{certificate.name}</span>
-                {certificate.id === selectedCertificate?.id && (
+                <span>{certificate.commonName}</span>
+                {certificate.serialNumber ===
+                  selectedCertificate?.serialNumber && (
                   <Arrow className="certificates__arrow" />
                 )}
               </li>
@@ -80,19 +99,19 @@ export const App = () => {
       {!isAddCertificate && selectedCertificate && (
         <section className="certificate-info">
           <p className="certificate-info__text">
-            <b>Common Name:</b>
-            {selectedCertificate.name}
+            <b>Common Name: </b>
+            {selectedCertificate.commonName}
           </p>
           <p className="certificate-info__text">
-            <b>Issuer CN:</b>
-            {selectedCertificate.issuerCN}
+            <b>Issuer CN: </b>
+            {selectedCertificate.issuer}
           </p>
           <p className="certificate-info__text">
-            <b>Valid From:</b>
+            <b>Valid From: </b>
             {selectedCertificate.validFrom}
           </p>
           <p className="certificate-info__text">
-            <b>Valid To:</b>
+            <b>Valid To: </b>
             {selectedCertificate.validTo}
           </p>
         </section>
