@@ -2,14 +2,14 @@ import { CertificateData, CertificatePreview } from 'core/types';
 import { useEffect, useState } from 'react';
 import cn from 'classnames';
 import { useLocalStorage } from 'core/hooks';
-import { StorageKeys, CertificateKeys } from 'core/enums';
+import { StorageKeys } from 'core/enums';
 import { FileInput } from './components/fileInput';
+import { readCertificate, getCertificateInfo } from 'core/helpers';
 
 // Images
 import Arrow from 'icons/arrow-icon.svg?react';
 
 import './style.scss';
-import { readCertificate } from 'core/helpers';
 
 export const App = () => {
   const [certificates, setCertificates] = useLocalStorage<CertificateData[]>(
@@ -32,22 +32,19 @@ export const App = () => {
       return;
     }
 
+    const { serialNumber, issuer, validFrom, validTo, commonName } =
+      getCertificateInfo(cert);
+
     const certPreviewData: CertificatePreview = {
-      serialNumber: cert.serialNumber.valueBlock.valueHexView.toString(),
-      issuer:
-        cert.issuer.typesAndValues
-          .find((issuer) => issuer.type === CertificateKeys.CommonName)
-          ?.value.valueBlock.value.toString() ?? '',
-      validFrom: cert.notBefore.value.toISOString().split('T')[0],
-      validTo: cert.notAfter.value.toISOString().split('T')[0],
-      commonName:
-        cert.subject.typesAndValues
-          .find((subject) => subject.type === CertificateKeys.CommonName)
-          ?.value.valueBlock.value.toString() ?? '',
+      serialNumber,
+      commonName,
+      issuer,
+      validFrom,
+      validTo,
     };
 
     const certData: CertificateData = {
-      serialNumber: certPreviewData.serialNumber,
+      serialNumber,
       certificate: cert,
     };
 

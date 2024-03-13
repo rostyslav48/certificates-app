@@ -15,9 +15,9 @@ export const FileInput: FC<Props> = ({ handleUpload, isError = false }) => {
       accept={{ 'text/hml': ['.cer'] }}
     >
       {({ getRootProps, getInputProps }) => (
-        <section className="file-input">
-          <div className="file-input__content" {...getRootProps()}>
-            <input {...getInputProps()} />
+        <section {...getRootProps()} className="file-input">
+          <input {...getInputProps()} />
+          <div className="file-input__content">
             <p className="file-input__text">
               Перетягнути файл сертифікату сюди <br /> (файл має бути з
               розширенням .cer) <br /> aбo
@@ -28,8 +28,8 @@ export const FileInput: FC<Props> = ({ handleUpload, isError = false }) => {
 
             {isError && (
               <span className="file-input__error">
-                Сталася помилка при обробці сертифікату, будь ласка <br />
-                перевірте його цілісність та спробуйте ще раз
+                Сталася помилка при обробці сертифікату, будь ласка перевірте
+                його цілісність та спробуйте ще раз
               </span>
             )}
           </div>
