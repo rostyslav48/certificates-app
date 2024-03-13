@@ -1,5 +1,5 @@
-import { CertificateData } from 'core/types';
-import { useState } from 'react';
+import { CertificateData, CertificatePreview } from 'core/types';
+import { useEffect, useState } from 'react';
 import cn from 'classnames';
 import { useLocalStorage } from 'core/hooks';
 import { StorageKeys, CertificateKeys } from 'core/enums';
@@ -17,9 +17,13 @@ export const App = () => {
     StorageKeys.Certificates,
     [],
   );
+  const [certificatesPreview, setCertificatesPreview] = useLocalStorage<
+    CertificatePreview[]
+  >(StorageKeys.CertificatesPreview, []);
   const [selectedCertificate, setSelectedCertificate] =
-    useState<CertificateData | null>(null);
+    useState<CertificatePreview | null>(null);
   const [isAddCertificate, setIsAddCertificate] = useState(false);
+  const [isUploadingError, setIsUploadingError] = useState(false);
 
   const handleCertificateUpload = async (file: File) => {
     const fileArrayBuffer = await file.arrayBuffer();
@@ -27,12 +31,13 @@ export const App = () => {
     const asn1 = asn1js.fromBER(certificateBuffer);
 
     if (asn1.result.error) {
-      throw 'Неправильна структура конверта сертифіката (очікується SEQUENCE)';
+      setIsUploadingError(true);
+      return;
     }
 
     const cert = new pkijs.Certificate({ schema: asn1.result });
 
-    const certData: CertificateData = {
+    const certPreviewData: CertificatePreview = {
       serialNumber: cert.serialNumber.valueBlock.valueHexView.toString(),
       issuer:
         cert.issuer.typesAndValues
@@ -44,8 +49,24 @@ export const App = () => {
         cert.subject.typesAndValues
           .find((subject) => subject.type === CertificateKeys.CommonName)
           ?.value.valueBlock.value.toString() ?? '',
+    };
+
+    const certData: CertificateData = {
+      serialNumber: certPreviewData.serialNumber,
       certificate: cert,
     };
+
+    setCertificatesPreview((prevState) => {
+      const payload = prevState.some(
+        ({ serialNumber }) => serialNumber === certPreviewData.serialNumber,
+      )
+        ? prevState.filter(
+            ({ serialNumber }) => serialNumber !== certPreviewData.serialNumber,
+          )
+        : prevState;
+
+      return [...payload, certPreviewData];
+    });
 
     setCertificates((prevState) => {
       const payload = prevState.some(
@@ -58,9 +79,21 @@ export const App = () => {
 
       return [...payload, certData];
     });
-    setSelectedCertificate(certData);
+
+    setSelectedCertificate(certPreviewData);
     setIsAddCertificate(false);
   };
+
+  const handleCertificateSelect = (certificate: CertificatePreview) => {
+    setSelectedCertificate(certificate);
+    setIsAddCertificate(false);
+  };
+
+  useEffect(() => {
+    if (isUploadingError) {
+      setIsUploadingError(false);
+    }
+  }, [isAddCertificate]);
 
   return (
     <div id="root" className="grid wrapper">
@@ -71,11 +104,11 @@ export const App = () => {
         >
           {isAddCertificate ? 'Назад' : 'Додати'}
         </button>
-        {certificates.length ? (
+        {certificatesPreview.length ? (
           <ul className="certificates__list">
-            {certificates.map((certificate) => (
+            {certificatesPreview.map((certificate) => (
               <li
-                onClick={() => setSelectedCertificate(certificate)}
+                onClick={() => handleCertificateSelect(certificate)}
                 key={certificate.serialNumber}
                 className={cn('certificates__item', {
                   'certificates__item--active':
@@ -119,7 +152,10 @@ export const App = () => {
 
       {isAddCertificate && (
         <div className="certificate-info__file-input">
-          <FileInput handleUpload={handleCertificateUpload} />
+          <FileInput
+            isError={isUploadingError}
+            handleUpload={handleCertificateUpload}
+          />
         </div>
       )}
     </div>
