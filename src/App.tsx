@@ -4,13 +4,12 @@ import cn from 'classnames';
 import { useLocalStorage } from 'core/hooks';
 import { StorageKeys, CertificateKeys } from 'core/enums';
 import { FileInput } from './components/fileInput';
-import * as asn1js from 'asn1js';
-import * as pkijs from 'pkijs';
 
 // Images
 import Arrow from 'icons/arrow-icon.svg?react';
 
 import './style.scss';
+import { readCertificate } from 'core/helpers';
 
 export const App = () => {
   const [certificates, setCertificates] = useLocalStorage<CertificateData[]>(
@@ -26,16 +25,12 @@ export const App = () => {
   const [isUploadingError, setIsUploadingError] = useState(false);
 
   const handleCertificateUpload = async (file: File) => {
-    const fileArrayBuffer = await file.arrayBuffer();
-    const certificateBuffer = new Uint8Array(fileArrayBuffer).buffer;
-    const asn1 = asn1js.fromBER(certificateBuffer);
+    const cert = await readCertificate(file);
 
-    if (asn1.result.error) {
+    if (!cert) {
       setIsUploadingError(true);
       return;
     }
-
-    const cert = new pkijs.Certificate({ schema: asn1.result });
 
     const certPreviewData: CertificatePreview = {
       serialNumber: cert.serialNumber.valueBlock.valueHexView.toString(),
@@ -56,30 +51,19 @@ export const App = () => {
       certificate: cert,
     };
 
-    setCertificatesPreview((prevState) => {
-      const payload = prevState.some(
-        ({ serialNumber }) => serialNumber === certPreviewData.serialNumber,
-      )
-        ? prevState.filter(
-            ({ serialNumber }) => serialNumber !== certPreviewData.serialNumber,
-          )
-        : prevState;
+    setCertificatesPreview((prevState) => [
+      ...prevState.filter(
+        ({ serialNumber }) => serialNumber !== certPreviewData.serialNumber,
+      ),
+      certPreviewData,
+    ]);
 
-      return [...payload, certPreviewData];
-    });
-
-    setCertificates((prevState) => {
-      const payload = prevState.some(
-        ({ serialNumber }) => serialNumber === certData.serialNumber,
-      )
-        ? prevState.filter(
-            ({ serialNumber }) => serialNumber !== certData.serialNumber,
-          )
-        : prevState;
-
-      return [...payload, certData];
-    });
-
+    setCertificates((prevState) => [
+      ...prevState.filter(
+        ({ serialNumber }) => serialNumber !== certData.serialNumber,
+      ),
+      certData,
+    ]);
     setSelectedCertificate(certPreviewData);
     setIsAddCertificate(false);
   };
